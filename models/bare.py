@@ -1,4 +1,4 @@
-from models.Model import Model
+from models.model import Model
 
 
 class Bare(Model):

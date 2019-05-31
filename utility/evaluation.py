@@ -1,6 +1,6 @@
 from scipy.interpolate import interp1d
 import numpy as np
-from models.Model import Model
+from models.model import Model
 
 
 def smape(y_test, y_pred):
@@ -82,7 +82,7 @@ def evaluate(test, y_pred, period=24, bins=99, zones=1):
     """
     quantiles = 100
     y = np.linspace(0, 1, 100)
-    y_real = test.reshape(-1, period, zones)  # days, hours, zones
+    y_real = test.values.reshape(-1, period, zones)  # days, hours, zones
     # print(y_real.shape)
     # print(y_pred.shape)
     # match up the predictions CDF quantiles with the desired y quantiles

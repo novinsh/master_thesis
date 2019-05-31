@@ -19,7 +19,7 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True, split=False):
     else:
         n_vars = data.shape[1]
     # TODO: useful for multivariate cases
-    # var_mapping = {data.columns.values[j]: 'var%d' % (j + 1) for j in range(n_vars)}
+    var_mapping = {data.columns.values[j]: 'var%d' % (j + 1) for j in range(n_vars)}
     df = pd.DataFrame(data)
     cols, names = list(), list()
     # input sequence (t-n, ... t-1)
@@ -49,16 +49,16 @@ def series_to_supervised(data, n_in=1, n_out=1, dropnan=True, split=False):
             x, y = df.iloc[:, :n_in], df.iloc[:, -n_out:]
             x_df = pd.concat((x_df, x), axis=1)
             y_df = pd.concat((y_df, y), axis=1)
-        return x_df, y_df
+        return x_df, y_df, var_mapping
     else:
-        return agg
+        return agg, var_mapping
 
 
 if __name__ == "__main__":
     df_power = pd.read_pickle("../data/df_power.pkl")
 
     # univariate time series case (for showcase)
-    n_input = 2
+    n_input = 3
     n_output = 2
     n_size = 10
     data = series_to_supervised(df_power.wf1, n_in=n_input, n_out=n_output)

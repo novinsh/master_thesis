@@ -1,32 +1,37 @@
 import numpy as np
 import pandas as pd
-from models.Model import Model
+from models.model import Model
 from utility.series_to_supervised import series_to_supervised
 from utility.data_handler import DataHandler
 from keras.models import Sequential
-from keras.layers import Dense, Dropout
+from keras.layers import Dense, Dropout, SimpleRNN, LSTM, GRU, BatchNormalization, Activation
 from scipy import stats
 from keras.optimizers import Adam, SGD
+from sklearn.utils import compute_class_weight
 
 
-class MLP(Model):
+class RNN(Model):
     def __init__(self,config):
-        super(MLP, self).__init__(config)
+        super(RNN, self).__init__(config)
         self.dataHandler = DataHandler(nr_bins=self.configs['n_bins'])
 
     def architecture(self):
         n_input = self.configs['n_input']
         n_bins = self.configs['n_bins']
+        debug = self
+        #
         model = Sequential()
-        model.add(Dense(100, activation='tanh', input_dim=n_input))
-        model.add(Dropout(0.1))
-        model.add(Dense(100, activation='tanh'))
-        model.add(Dropout(0.25))
-        model.add(Dense(100, activation='tanh'))
-        model.add(Dropout(0.5))
-        model.add(Dense(n_bins, activation='softmax'))
-        # sgd = SGD(lr=0.01, decay=1e-5, momentum=0.9, nesterov=True)
+        model.add(GRU(100, return_sequences=False, recurrent_dropout=0.2, input_shape=(n_input, 1),
+                            name='recurrent_layer_0'))  # , activity_regularizer=l1(1e-10)))
+        # model.add(BatchNormalization())
+        # model.add(Activation('tanh'))
+        # model.add(Dense(100, name='dense_middle_0'))#, activity_regularizer=l1(1e-10)))
+        # model.add(Dropout(0.5))
+        # model.add(BatchNormalization())
+        model.add(Dense(n_bins, activation='softmax', name='final_layer'))
+        #     sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
         model.compile(loss='categorical_crossentropy', optimizer='adam')
+        print(model.summary()) if self.configs['verbosity'] > 0 else None
         return model
 
     def fit(self, train, config=None):
@@ -40,14 +45,18 @@ class MLP(Model):
         #
         self.model = self.architecture()
         train_x, train_y = series_to_supervised(train, n_in=n_input, n_out=n_output, split=True)
+        train_x = train_x.values.reshape((train_x.shape[0], train_x.shape[1], -1))
         self.dataHandler.update_data(train, debug)
         y_onehot, y_bin = self.dataHandler.val_to_onehot(train_y.values)
         #
+        classWeight = compute_class_weight('balanced', np.unique(y_bin), y_bin)
+        classWeight = dict(enumerate(classWeight))
         history = self.model.fit(train_x, y_onehot,
-                            epochs=n_epochs, shuffle=False, validation_split=0.2, batch_size=n_batch, verbose=verbosity)
+                                          epochs=n_epochs, validation_split=0.2, shuffle=False, batch_size=n_batch, class_weight=classWeight)
         return history
 
     def predict(self, test):
+        from matplotlib import pyplot as plt
         history = [x for x in self.dataHandler.data]
         predictions = []
         # step over each time-step in the test set
@@ -55,30 +64,39 @@ class MLP(Model):
             # fit model and make forecast for history
             n_input = self.configs['n_input']
             # prepare data
-            x_input = np.array(history[-n_input:]).reshape(1, n_input)
+            x_input = np.array(history[-n_input:]).reshape(1, n_input, -1)
             # forecast
             yhat = self.model.predict(x_input, verbose=0)
+            #median = Model.get_horizon(np.array(self.pred_2_rv(yhat[0])).reshape(-1,1), 0.5)
             # store forecast in list of predictions
             predictions.append(yhat[0])
-            # add actual observation to history for the next loop
-            history.append(test[i])
+            # add prediction to the history for the next loop
+            # other possibilities: add the real observation, add prediction with some weight of previous ones and new observations, etc.
+            #history.append(test[i])
+            # print(yhat[0])
+            plt.plot(yhat[0])
+            plt.show()
+            history.append(self.dataHandler.bin_centers[np.argmax(yhat[0])])
         #
         bin_prediction, _ = self.dataHandler.onehot_to_val(predictions)
         predictions = np.array(predictions)
         return predictions, bin_prediction
 
     def pred_2_rv(self, y_hat):
+        return stats.rv_histogram((y_hat, self.dataHandler.bin_edges))
+
+    def preds_2_rv(self, y_hats):
         """
         prediction to random variable (squashes the quantile dimension!)
-        :param y_hat: (samples*hours, quantiles, variable)
+        :param y_hats: (samples*hours, quantiles, variable)
         :return: predictions as a scipy random variable
         """
-        assert len(y_hat.shape) == 3
-        y_hat_rv = np.empty((y_hat.shape[0], 0))  # (leadtime, variable)
-        for k in range(y_hat.shape[2]):  # variable
+        assert len(y_hats.shape) == 3
+        y_hat_rv = np.empty((y_hats.shape[0], 0))  # (leadtime, variable)
+        for k in range(y_hats.shape[2]):  # variable
             y_tmp = []
-            for i in range(y_hat.shape[0]):  # leadtime
-                y_tmp.append(stats.rv_histogram((y_hat[i, :, k], self.dataHandler.bin_edges)))
+            for i in range(y_hats.shape[0]):  # leadtime
+                y_tmp.append(stats.rv_histogram((y_hats[i, :, k], self.dataHandler.bin_edges))) # todo: use pred_2_rv
             y_hat_rv = np.append(y_hat_rv, np.array(y_tmp).reshape(-1, 1), axis=1)
         return y_hat_rv
 

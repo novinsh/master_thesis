@@ -1,6 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
-from models.Model import Model
+from models.model import Model
 
 
 def plot_forecast_dense(x, y, y_pred, horizon=24, title="", baselines=None, quantiles=[0.05, 0.10, 0.15, 0.20, 0.25]):

@@ -67,6 +67,7 @@ class DataHandler():
         """ Take a vector val timeseries and assigns a bin based on cdf or invcdf to each value in y """
         # TODO: extend for the multivariate case
         v_to_bin = []
+
         for v in val:
             v_to_bin.append(self.closest_bin_on_cdf(v))
         # print(len(v_to_bin))
