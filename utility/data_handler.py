@@ -13,7 +13,7 @@ class DataHandler():
             self.update_data(data, debug)
 
     def plot_debug(self):
-        X = np.linspace(np.min(self.data), np.max(self.data), 100)
+        X = np.linspace(0, 1, 100)
         plt.figure(figsize=(16, 5))
         plt.title("PDF and CDF")
         # plt.hist(self.data, bins=self.bin_edges, density=False, label="Histogram")
@@ -57,8 +57,8 @@ class DataHandler():
 
     def closest_bin_on_cdf(self, value):
         """ assign bin on the cdf """
-        if value < np.min(self.data) or value > np.max(self.data):
-            print("value must range between {0} and {1}".format(np.min(self.data), np.max(self.data)))
+        if value < 0 or value > 1:
+            print("value must range between {0} and {1}".format(0, 1))
             assert False
         dist_1 = np.abs(self.bin_centers - value)
         return np.argmin(dist_1)
@@ -81,12 +81,12 @@ class DataHandler():
         return y, bin_num
 
     def get_cdf(self):
-        X = np.linspace(np.min(self.data), np.max(self.data), 100)
+        X = np.linspace(0, 1, 100)
         return X, self.hist_dist.cdf(X)
 
     def plot_on_dist(self, x):
         # PDF and CDF
-        X = np.linspace(np.min(self.data), np.max(self.data), 100)
+        X = np.linspace(0, 1, 100)
         q = self.hist_dist.cdf(x)
         plt.plot(X, self.hist_dist.cdf(X), label="CDF $F_X(x)$")
         plt.plot(x, q, ".r", label="x on cdf")

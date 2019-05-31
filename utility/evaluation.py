@@ -1,6 +1,5 @@
 from scipy.interpolate import interp1d
 import numpy as np
-from models.model import Model
 
 
 def smape(y_test, y_pred):
@@ -82,24 +81,39 @@ def evaluate(test, y_pred, period=24, bins=99, zones=1):
     """
     quantiles = 100
     y = np.linspace(0, 1, 100)
-    y_real = test.values.reshape(-1, period, zones)  # days, hours, zones
+    y_real = test.reshape(-1, period, zones)  # days, hours, zones
     # print(y_real.shape)
     # print(y_pred.shape)
     # match up the predictions CDF quantiles with the desired y quantiles
     F_hat = np.empty((len(y), y_real.shape[0], y_real.shape[1], y_real.shape[2]))
-    h=-1
     for i in range(y_real.shape[0]):
         for j in range(y_real.shape[1]):
-            h += 1
             for k in range(y_real.shape[2]):
-                F_hat[:, i, j, k] = y_pred[h,k].cdf(y)
+                F_hat[:, i, j, k] = y_pred[i][j].cdf(y)
+#                F_hat[:, i, j, k] = y_pred[h,k].cdf(y)
     #
     I = np.heaviside(np.moveaxis(y - y_real[:, :, :, np.newaxis], -1, 0), 0)
     acc = (F_hat - I) ** 2
     #
-    y_pred = Model.get_horizon(y_pred,.5).reshape(y_real.shape)
-    return np.trapz(acc, y, axis=0), np.abs(y_pred - y_real)
+    y_pred_median = np.array([y_pred[i].median() for i in range(y_real.shape[0])]).reshape(y_real.shape)
+    return np.trapz(acc, y, axis=0), np.abs(y_pred_median - y_real)
 
+
+def evaluate_nonquantile(test, y_pred, period=24, bins=99, zones=1):
+    y = np.linspace(0, 1, 100)
+    y_real = test.reshape(-1, period, zones)  # days, hours, zones
+    F_hat = np.empty((len(y), y_real.shape[0], y_real.shape[1], y_real.shape[2]))
+    for i in range(y_real.shape[0]):
+        for j in range(y_real.shape[1]):
+            for k in range(y_real.shape[2]):
+                F_hat[:, i, j, k] = y_pred[i][j]
+#                F_hat[:, i, j, k] = y_pred[h,k].cdf(y)
+    #
+    I = np.heaviside(np.moveaxis(y - y_real[:, :, :, np.newaxis], -1, 0), 0)
+    acc = (F_hat - I) ** 2
+    #
+    y_pred_median = np.array([y_pred[i] for i in range(y_real.shape[0])]).reshape(y_real.shape)
+    return np.trapz(acc, y, axis=0), np.abs(y_pred_median - y_real)
 
 
 # def evaluate(test, prediction, period=24, bins=99, zones=1):
