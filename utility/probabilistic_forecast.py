@@ -15,6 +15,12 @@ class MCSimulation(object):
     def get_trajectory(self, j):
         self.trajectories[j]
 
+    def get_nr_trajectories(self):
+        return len(self.trajectories)
+
+    def get_nr_senarios_per_trajectory(self):
+        return len(self.trajectories[0].leadTimeScenarios)
+
 
 class Trajectory(object):
     """ holding all possible lead time scenarios created as a result
@@ -33,14 +39,18 @@ class Trajectory(object):
     def get_leadtime(self, h):
         return self.leadTimeScenarios[h]
 
-    def generate_histories(self, n_input, n_samples=3, test=None):
+    def generate_histories(self, n_input, n_samples=3, mode='00', test=None):
         """ generates temporary histories for the network input by sampling from
             previous step prediction. It creates (n_current_histories)*n
             new histories (temporary trajectories)
         """
         # if self.leadTimeScenarios == []:
         #    return self.histories
-        pred_samples_tm1 = self.get_leadtime(-1).generate_scenarios(n=n_samples)
+        if mode=='00':
+            pred_samples_tm1 = self.get_leadtime(-1).generate_scenarios(n=n_samples)
+        elif mode=='01':
+            pred_samples_tm1 = self.get_leadtime(-1).get_scenarios_randomly(n=n_samples)
+
         histories_new = []
         for history in self.histories:
             for y_tm1 in pred_samples_tm1:
@@ -88,6 +98,17 @@ class LeadTimeScenarios(object):
             samples = np.append(samples, sample_normal)
         return samples
 
+    def get_scenarios_randomly(self, n=3):
+        """ This method is usable for Epistemic Model """
+        samples = np.empty((0,))
+        if n > self.scenarios.shape[0]:
+            samples = np.append(samples, [s.mu for s in self.scenarios])
+        else:
+            chosen_scenarios = np.random.choice(self.scenarios, size=n, replace=False,
+                                                p=[1/len(self.scenarios)]*len(self.scenarios))
+            samples = np.append(samples, [s.mu for s in chosen_scenarios])
+        return samples
+
     def drop_randomly(self, probability=0.5):
         """ to drop some of the scenarios with uniform probability
             (to avoid exponential growth of the trajectory)
@@ -120,6 +141,9 @@ class ProbabilisticForecast():
 
     def __getitem__(self, key):
         return self.forecast_variables[key]
+
+    def __len__(self):
+        return len(self.forecast_variables)
 
     def add_variable(self, scenarios, debug=False):
         samples = np.empty((0,))
