@@ -34,8 +34,30 @@ def plot_evaluation_2(ncrps, nmae, period=24, title=''):
     plt.show()
 
 
-def plot_forecast_dense(x, y, forecast, horizon=24, title="", baselines=None, alphas=[0.1, 0.2, 0.3, 0.4, 0.5]):
-    plt.figure(figsize=(17, 4))
+def plot_evaluation_3(ncrps, nmse, bounds, period=24, title=''):
+    """ with RMSE and bounds """
+    plt.figure(figsize=(15, 5))
+    plt.errorbar(range(1, period + 1), np.mean(ncrps, axis=(0, 2)),
+                 yerr=np.std(np.mean(ncrps, axis=0), axis=1), color='red', fmt='o-', capsize=3,
+                 label='NCRPS', markersize=1, elinewidth=1)
+    plt.errorbar(range(1, period + 1), np.mean(nmse, axis=(0, 2)),
+                 yerr=np.std(np.mean(nmse, axis=0), axis=1), color='blue', fmt='o-', capsize=3,
+                 label='NMSE', markersize=1, elinewidth=1)
+    ubound, lbound1, lbound2, lbound3 = bounds
+    plt.hlines(ubound, 0, period  + 1, color='m', linestyles='--', label='upper bound')
+    plt.hlines(lbound3, 0, period  + 1, color='g', linestyles='--', label='lower bound')
+    plt.hlines(0, 1, period + 1, color='k', linestyles=':', linewidth=1.5)
+    plt.legend(fontsize=15)
+    plt.xlabel('Lead time', fontsize=15)
+    plt.grid()
+    plt.xticks(range(1, period + 1), range(1, period + 1))
+    plt.title(title)
+    #plt.ylim([0,0.2])
+    plt.show()
+
+
+def plot_forecast_dense(x, y, forecast, horizon=24, title="", baselines=None, alphas=[0.1, 0.2, 0.3, 0.4, 0.5], figsize=(17,4)):
+    plt.figure(figsize=figsize)
     offset_te = min(horizon, 72) # how much of the test data to plot, not more than 48!
     offset_tr = 24#int(0.5 * offset_te)  # how much of training data to plot
     #
@@ -224,7 +246,6 @@ def plot_mcBranches():
 	# plt.show()
 
 
-
 def plot_learning_curve(history):
     plt.figure(figsize=(12,3))
     plt.subplot(1,3,1)
@@ -237,23 +258,25 @@ def plot_learning_curve(history):
     plt.grid()
     # plt.yscale('log')
 
-    plt.subplot(1,3,2)
-    plt.plot(history.history['mean_loss'])
-    plt.plot(history.history['val_mean_loss'])
-    plt.legend(['train', 'validation'])
-    plt.xlabel('epoch')
-    plt.title('loss 1')
-    plt.grid()
-    # plt.yscale('log')
+    if 'mean_loss' in history.history.keys() and 'val_mean_loss' in history.history.keys():
+        plt.subplot(1,3,2)
+        plt.plot(history.history['mean_loss'])
+        plt.plot(history.history['val_mean_loss'])
+        plt.legend(['train', 'validation'])
+        plt.xlabel('epoch')
+        plt.title('loss 1')
+        plt.grid()
+        # plt.yscale('log')
 
-    plt.subplot(1,3,3)
-    plt.plot(history.history['log_var_loss'])
-    plt.plot(history.history['val_log_var_loss'])
-    plt.legend(['train', 'validation'])
-    # plt.yscale('log')
-    plt.xlabel('epoch')
-    plt.title('loss 2')
-    plt.grid()
+    if 'log_var_loss' in history.history.keys() and 'val_log_var_loss' in history.history.keys():
+        plt.subplot(1,3,3)
+        plt.plot(history.history['log_var_loss'])
+        plt.plot(history.history['val_log_var_loss'])
+        plt.legend(['train', 'validation'])
+        # plt.yscale('log')
+        plt.xlabel('epoch')
+        plt.title('loss 2')
+        plt.grid()
     plt.show()
 
 
