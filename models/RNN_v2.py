@@ -143,7 +143,7 @@ class ModelRNNEpistemic(ModelRNNNonBayesian):
                 #
                 for h in range(1, len(test)):  # roll forward
                     # generate histories based on previous LTS
-                    histories = trajectory.generate_histories(n_input=self.n_input, n_samples=3, mode='01', test=test[h, 1:])
+                    histories = trajectory.generate_histories(n_input=self.n_input, n_samples=3, mode='00', test=test[h, 1:])
                     lts = LeadTimeScenarios()  # create new lead time scenario(s)
                     # traverse possible histories and predict one-step ahead which
                     # leads to traversing possible futures basically
