@@ -1,6 +1,6 @@
 import keras
 from models.model_base import ModelBase
-from models.RNN.common import *
+from models.common import *
 from keras.models import Model, Input
 from keras.layers import GRU, Dense
 from utility.clr_callback import *
@@ -23,7 +23,7 @@ class ModelAleatoricEpistemic(ModelBase):
         print(model.summary())
         return model
 
-    def fit(self, train, dev, n_input=24, debug=False):
+    def fit(self, train, dev, n_input=24, nr_epochs=10, debug=False):
         n_features = train.shape[1]
 
         generator = CustomGen(train, train[:, 0], length=n_input)
@@ -33,9 +33,11 @@ class ModelAleatoricEpistemic(ModelBase):
 
         self.model_alep = self.build_model(n_input, n_features)
         clr_cb = CyclicLR(mode='triangular2', base_lr=0.00001, max_lr=0.01, step_size=epoch_steps, gamma=0.8)
+        # checkpoint = ModelCheckpoint('modelalep-{epoch:02d}-{acc:03f}-{val_acc:03f}.h5', verbose=1, monitor='val_loss',
+        #                              save_best_only=True, mode='auto')
         self.history = self.model_alep.fit_generator(generator, validation_data=dev_generator, shuffle=False,
-                                                     epochs=10, verbose=1, steps_per_epoch=epoch_steps,
-                                                     callbacks=[clr_cb])
+                                                     epochs=nr_epochs, verbose=1, steps_per_epoch=epoch_steps,
+                                                     callbacks=[clr_cb])#, checkpoint])
         if debug:
             plot_learning_curve(self.history)
         self.n_input = n_input
@@ -45,7 +47,7 @@ class ModelAleatoricEpistemic(ModelBase):
         yhats = np.empty((0, len(test)))
         yhats_std = np.empty((0, len(test)))
         for i in range(nr_simulations):
-            history = warmup.reshape(1, -1, 5)
+            history = warmup.reshape(1, -1, warmup.shape[-1])
             predictions = []
             predictions_logvar = []
             ypred = self.model_alep.predict(history)
@@ -70,8 +72,9 @@ class ModelAleatoricEpistemic(ModelBase):
             probabilisticForecast.add_variable(lts.scenarios, False)
         return probabilisticForecast
 
-    def scenario_forecast(self, test_warmup, test, horizon=24, n_sims=15):
+    def scenario_forecast(self, test_warmup, test, horizon=-1, n_sims=15):
         n_input = self.n_input
+        horizon = len(test) if horizon is None else horizon
 
         def neuralnet_scenario_forecasting(warmup, test, nr_simulations=1, debug=False):
             # yhats = np.empty((0,len(test)))
@@ -81,7 +84,7 @@ class ModelAleatoricEpistemic(ModelBase):
                 #         print(i)
                 # Start a trajectory by warmup sequence and then generate new
                 # alternative futures or aka scenarios based on new predictions
-                history = warmup.reshape(1, -1, 5)
+                history = warmup.reshape(1, -1, warmup.shape[-1])
                 trajectory = Trajectory(history=history, debug=debug)
                 # first lead time prediction, first scenario (only one)
                 # TODO: could be more than only one, by running prediction multiple times (MCDO)

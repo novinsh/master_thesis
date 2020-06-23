@@ -17,7 +17,7 @@ class ModelNonBayesian(ModelBase):
         print(model.summary())
         return model
 
-    def fit(self, train, dev, n_input=24, debug=True):
+    def fit(self, train, dev, n_input=24, nr_epochs=10, debug=True):
         n_features = train.shape[1]
         #
         generator = TimeseriesGenerator(train, train[:, 0], length=n_input)
@@ -28,11 +28,12 @@ class ModelNonBayesian(ModelBase):
         self.model0 = self.build_model(n_input, n_features)
         clr_cb = CyclicLR(mode='triangular2', base_lr=0.00001, max_lr=0.01, step_size=epoch_steps, gamma=0.8)
         history = self.model0.fit_generator(generator, validation_data=dev_generator, shuffle=False,
-                                            epochs=10, verbose=1, steps_per_epoch=epoch_steps, callbacks=[clr_cb])
+                                            epochs=nr_epochs, verbose=1, steps_per_epoch=epoch_steps, callbacks=[clr_cb])
         self.history = history
         self.n_input = n_input
 
     def forecast(self, warmup, test):
+        # TODO: instead of test this should be called exogenous variables!
         n_input = self.n_input
         history = warmup[-n_input:].reshape(1, -1, 5)
         predictions = []
@@ -51,7 +52,7 @@ class ModelNonBayesian(ModelBase):
 
     def evaluate(self, warmup, test):
         ypred = self.forecast(warmup, test)
-        ncrps, nmae = evaluate_nonquantile(test, ypred, period=lest(test))
+        ncrps, nmae = evaluate_nonquantile(test, ypred, period=len(test))
         mse = mean_squared_error(test, ypred)
         return mse, ncrps, nmae
 

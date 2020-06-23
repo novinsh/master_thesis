@@ -1,6 +1,6 @@
 import keras
 from models.model_base import ModelBase
-from models.RNN.common import *
+from models.common import *
 from keras.models import Model, Input
 from keras.layers import GRU, Dense
 from utility.clr_callback import *
@@ -21,7 +21,7 @@ class ModelAleatoric(ModelBase):
         print(model.summary())
         return model
 
-    def fit(self, train, dev, n_input=24, debug=False):
+    def fit(self, train, dev, n_input=24, nr_epochs=10, debug=False):
         n_features = train.shape[1]
 
         generator = CustomGen(train, train[:, 0], length=n_input)
@@ -33,7 +33,7 @@ class ModelAleatoric(ModelBase):
         clr_cb = CyclicLR(mode='triangular2', base_lr=0.00001, max_lr=0.01, step_size=epoch_steps, gamma=0.8)
 
         self.history = self.model_al.fit_generator(generator, validation_data=dev_generator, shuffle=False,
-                                                   epochs=10, verbose=1, steps_per_epoch=epoch_steps,
+                                                   epochs=nr_epochs, verbose=1, steps_per_epoch=epoch_steps,
                                                    callbacks=[clr_cb])
         self.n_input = n_input
         if debug:
